@@ -1,0 +1,11 @@
+{
+  "description": "Bot conversacional con API de microexpresiones faciales en tiempo real y avatar sincronizado.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "name": "Avatar Microexpresiones AI",
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
