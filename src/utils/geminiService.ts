@@ -9,6 +9,7 @@ export interface GeminiResponsePayload {
     category?: 'semantic' | 'episodic' | 'preference' | 'working' | string;
     summary?: string;
   };
+  imageUrl?: string;
   mode: string;
 }
 
@@ -61,7 +62,8 @@ export async function generateGeminiResponse(options: SendMessageOptions): Promi
       botResponse: data.botResponse || 'Comprendo lo que mencionas.',
       microexpressions: data.microexpressions,
       extractedMemory: data.extractedMemory || { hasNewMemory: false },
-      mode: data.mode || 'gemini_3.6_flash',
+      mode: data.mode || "gemini_3.6_flash",
+      imageUrl: data.imageUrl,
     };
   } catch (error: any) {
     console.warn('[geminiService] Fetch failed or offline, returning fallback structure:', error);

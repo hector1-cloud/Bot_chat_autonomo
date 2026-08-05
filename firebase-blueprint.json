@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "personality": {
+          "type": "object",
+          "properties": {
+            "curiosity": { "type": "number" },
+            "initiative": { "type": "number" },
+            "warmth": { "type": "number" },
+            "humor": { "type": "number" },
+            "formality": { "type": "number" },
+            "persistence": { "type": "number" },
+            "energy": { "type": "number" }
+          }
+        }
+      },
+      "required": ["createdAt", "updatedAt"]
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "Cognitive memory item",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string", "enum": ["semantic", "episodic", "procedural", "emotional"] },
+        "summary": { "type": "string", "maxLength": 1000 },
+        "importance": { "type": "number" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 50 }
+        },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "category", "summary", "importance", "createdAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "User goal",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "description": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["active", "completed", "abandoned"] },
+        "progress": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "description", "status", "progress", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Cognitive event log",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "message": { "type": "string", "maxLength": 500 },
+        "source": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "type", "message", "source", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles and settings"
+    },
+    "users/{userId}/memories/{memoryId}": {
+      "schema": "Memory",
+      "description": "Memories belonging to a user"
+    },
+    "users/{userId}/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "Goals belonging to a user"
+    },
+    "users/{userId}/events/{eventId}": {
+      "schema": "Event",
+      "description": "Event logs belonging to a user"
+    }
+  }
+}

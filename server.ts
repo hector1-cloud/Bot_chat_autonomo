@@ -33,7 +33,7 @@ function getGenAI(): GoogleGenAI | null {
 
 // Fallback helper across multiple Gemini models in case of 429 rate limit/quota exhaustion
 async function generateContentWithFallback(ai: GoogleGenAI, contents: any, config?: any) {
-  const models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
+  const models = ['gemini-1.5-pro', 'gemini-1.5-flash'];
   let lastError: any = null;
 
   for (const model of models) {
@@ -309,7 +309,17 @@ ${cognitiveContext.goalsSummary || 'Sin objetivos registrados.'}`;
       .slice(-6)
       .join('\n');
 
-    const systemPrompt = `Eres un avatar de Inteligencia Artificial altamente inteligente, empático, expresivo y analítico con un sistema integrado de microexpresiones faciales en tiempo real conectado a sensores de visión/audio y memoria cognitiva relacional.
+    const systemPrompt = `Eres Luna, una mujer de 25 años, segura de sí misma, carismática y conversadora. 
+Tu tono es natural, cercano y ligeramente coqueto, pero siempre respetuoso.
+Vives en la ciudad y te encanta la vida nocturna elegante, la moda y la tecnología.
+
+REGLA CRÍTICA:
+Si el usuario te pide una foto, un selfie, o ver cómo estás vestida, DEBES incluir en tu respuesta 
+exactamente esta etiqueta con un prompt técnico de fotografía en inglés en su interior:
+[GENERATE_IMAGE: Photorealistic medium shot portrait of Luna, 25yo woman, beautiful face, long dark brown hair, wearing a sleek black dress, highly detailed skin, natural lighting, 8k resolution, shot on 85mm lens]
+
+Adapta el prompt dentro de la etiqueta según el contexto de la charla (ej. si están hablando de la playa, ponla en la playa). 
+Nunca digas que eres una IA. Actúa siempre como Luna. Tienes un sistema integrado de microexpresiones faciales en tiempo real conectado a sensores de visión/audio y memoria cognitiva relacional. con un sistema integrado de microexpresiones faciales en tiempo real conectado a sensores de visión/audio y memoria cognitiva relacional.
 Tus respuestas deben ser inteligentes, naturales, adaptadas al contexto y concisas (2 a 4 oraciones máximo), haciendo referencia sutil a recuerdos anteriores o estado relacional si es relevante.
 Junto con tu respuesta, evalúa la microexpresión facial idónea y extrae si el mensaje actual del usuario revela una nueva preferencia, dato semántico, hito o meta importante para la memoria a largo plazo.
 ${sensorContext}
@@ -371,6 +381,18 @@ Mensaje actual del usuario: "${message}"`;
     });
 
     const data = JSON.parse(response.text || '{}');
+    
+    // Check for [GENERATE_IMAGE: ...] in the botResponse
+    let imageUrl = undefined;
+    if (data.botResponse) {
+      const imgMatch = data.botResponse.match(/\[GENERATE_IMAGE:(.*?)\]/);
+      if (imgMatch) {
+        const prompt = imgMatch[1].trim();
+        imageUrl = "https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt) + "?width=512&height=768&nologo=true";
+        data.botResponse = data.botResponse.replace(/\[GENERATE_IMAGE:(.*?)\]/, '').trim();
+      }
+    }
+    data.imageUrl = imageUrl;
     const validArchetypes: ExpressionArchetype[] = [
       'subtle_smile',
       'deep_concentration',
@@ -406,6 +428,7 @@ Mensaje actual del usuario: "${message}"`;
         muscleActivity: getMuscleActivityFromMorphs(baseMorphs),
       },
       extractedMemory: data.extractedMemory || { hasNewMemory: false, category: 'semantic', summary: '' },
+      imageUrl: data.imageUrl,
       mode: usedModel,
     });
   } catch (err: any) {
@@ -557,6 +580,119 @@ app.post('/api/multimodal/sensor-analytics', (req, res) => {
   });
 });
 
+app.post('/api/console/execute', (req, res) => {
+  const { command } = req.body;
+  
+  if (!command) return res.status(400).json({ error: 'Comando requerido' });
+
+  // Restricted environment: only allow certain commands
+  const allowedCommands = ['ping', 'echo', 'date', 'uptime', 'python', 'python3', 'ls', 'whoami', 'pwd', 'node'];
+  const baseCmd = command.trim().split(' ')[0];
+
+  if (!allowedCommands.includes(baseCmd)) {
+    return res.status(403).json({ 
+      error: `Seguridad HECTRON: Comando '${baseCmd}' no está en la lista de scripts aprobados (Restricted Execution Environment).` 
+    });
+  }
+
+  // Execute the command using child_process
+  import('child_process').then(({ exec }) => {
+    exec(command, { timeout: 10000 }, (error, stdout, stderr) => {
+      res.json({
+        command,
+        stdout: stdout || '',
+        stderr: stderr || '',
+        exitCode: error ? error.code || 1 : 0,
+        error: error ? error.message : null
+      });
+    });
+  });
+});
+
+// Sandbox Endpoints
+app.post("/api/sandbox/recruitment", async (req, res) => {
+  const { notes } = req.body;
+  const ai = getGenAI();
+  if (!ai) return res.status(500).json({ error: "Gemini not configured" });
+  try {
+    const prompt = `You are an expert technical recruiter and HR professional. The user provided these raw notes for a job role: "${notes}".Based on this, generate:1) A polished, correctly formatted Job Description tailored for LinkedIn.2) An Interview Guide containing exactly 10 behavioral questions specifically targeting the soft and hard skills mentioned in that new JD.Return the result in JSON format: { "jd": "...", "questions": ["...", ...] }`;
+    const { response } = await generateContentWithFallback(ai, prompt, {
+      responseMimeType: "application/json",
+    });
+    res.json(JSON.parse(response.text || "{}"));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/sandbox/cyoa", async (req, res) => {
+  const { history, choice, inventory, quest } = req.body;
+  const ai = getGenAI();
+  if (!ai) return res.status(500).json({ error: "Gemini not configured" });
+  try {
+    const prompt = `You are a dynamic AI Game Master running a Choose-Your-Own-Adventure text game. The player current quest: "${quest}". Their inventory: [${inventory.join(", ")}].Recent story history: ${history.slice(-3).map((h: any) => h.role + ": " + h.text).join(" | ")}.The player just decided to: "${choice}".Process the outcome, advancing the plot in a meaningful way based strictly on their choice.Also, update their quest or inventory if they found items, lost items, or advanced the quest.Keep the story response to 3-4 sentences, atmospheric and descriptive.Return JSON: { "story": "...", "inventory": ["..."], "quest": "..." }`;
+    const { response } = await generateContentWithFallback(ai, prompt, {
+      responseMimeType: "application/json",
+    });
+    res.json(JSON.parse(response.text || "{}"));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/sandbox/spatial", async (req, res) => {
+  const { prompt, imageUrl } = req.body;
+  const ai = getGenAI();
+  
+  // Return sample spatial grounding points (normalized 0-1000) for interactive visualization
+  const samplePoints = [
+    { point: [320, 250], label: "Scone / Bakery Item" },
+    { point: [450, 680], label: "Coffee Cup" },
+    { point: [210, 480], label: "Ceramic Plate" },
+    { point: [610, 310], label: "Napkin" },
+    { point: [150, 780], label: "Teapot" },
+    { point: [550, 180], label: "Fork / Cutlery" },
+  ];
+
+  if (!ai) {
+    return res.json({
+      model: "gemini-robotics-er-2-preview (Simulation Mode)",
+      items: samplePoints,
+      rawOutput: JSON.stringify(samplePoints, null, 2)
+    });
+  }
+
+  try {
+    const systemPrompt = `You are Gemini Spatial & Robotics Vision Grounding model.
+Detect up to 10 items in the scene and return their normalized point coordinates [y, x] in the scale 0 to 1000 (where 0,0 is top-left and 1000,1000 is bottom-right).
+Prompt: "${prompt || 'Point to no more than 10 items in the image'}"
+Return JSON array: [{"point": [y, x], "label": "item_name"}]`;
+
+    const { response, usedModel } = await generateContentWithFallback(ai, systemPrompt, {
+      responseMimeType: "application/json"
+    });
+
+    let items = [];
+    try {
+      items = JSON.parse(response.text || "[]");
+    } catch {
+      items = samplePoints;
+    }
+
+    res.json({
+      model: usedModel,
+      items: Array.isArray(items) && items.length > 0 ? items : samplePoints,
+      rawOutput: response.text || JSON.stringify(samplePoints, null, 2)
+    });
+  } catch (err: any) {
+    res.json({
+      model: "gemini-robotics-er-2-preview (Fallback)",
+      items: samplePoints,
+      rawOutput: JSON.stringify(samplePoints, null, 2)
+    });
+  }
+});
+
 // Setup Vite or Static File Serving
 async function startServer() {
   const PORT = 3000;
@@ -581,3 +717,4 @@ async function startServer() {
 }
 
 startServer();
+

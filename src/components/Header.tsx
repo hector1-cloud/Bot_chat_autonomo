@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Cpu, Sparkles, BookOpen, Layers, X, ShieldCheck, Zap, Activity } from 'lucide-react';
+import { Cpu, Sparkles, BookOpen, Layers, X, ShieldCheck, Zap, Activity, Wifi, WifiOff } from 'lucide-react';
 
 interface HeaderProps {
   hasApiKey: boolean;
+  realtimeConnected?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ hasApiKey }) => {
+export const Header: React.FC<HeaderProps> = ({ hasApiKey, realtimeConnected = false }) => {
   const [showDocsModal, setShowDocsModal] = useState(false);
 
   return (
@@ -36,6 +37,16 @@ export const Header: React.FC<HeaderProps> = ({ hasApiKey }) => {
 
           {/* Badges & Actions */}
           <div className="flex items-center gap-2 text-xs">
+            {/* Realtime Pipeline Status */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${
+              realtimeConnected 
+                ? 'bg-emerald-950/30 border-emerald-900/50 text-emerald-400' 
+                : 'bg-rose-950/30 border-rose-900/50 text-rose-400'
+            }`}>
+              {realtimeConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              <span>{realtimeConnected ? 'Pipeline Conectado' : 'Pipeline Desconectado'}</span>
+            </div>
+
             {/* Status pill */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />

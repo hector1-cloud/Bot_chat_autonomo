@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['createdAt', 'updatedAt'])
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('email' in data) || (data.email is string && data.email.size() <= 200))
+        && (!('personality' in data) || (
+          data.personality is map
+          && (!('curiosity' in data.personality) || data.personality.curiosity is number)
+          && (!('initiative' in data.personality) || data.personality.initiative is number)
+          && (!('warmth' in data.personality) || data.personality.warmth is number)
+          && (!('humor' in data.personality) || data.personality.humor is number)
+          && (!('formality' in data.personality) || data.personality.formality is number)
+          && (!('persistence' in data.personality) || data.personality.persistence is number)
+          && (!('energy' in data.personality) || data.personality.energy is number)
+        ));
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      
+      match /memories/{memoryId} {
+        function isValidMemory(data) {
+          return data.keys().hasAll(['userId', 'category', 'summary', 'importance', 'createdAt'])
+            && data.userId == userId
+            && data.category in ["semantic", "episodic", "procedural", "emotional"]
+            && data.summary is string && data.summary.size() <= 1000
+            && data.importance is number
+            && data.createdAt is timestamp
+            && (!('tags' in data) || (data.tags is list && data.tags.size() <= 20 && (data.tags.size() == 0 || (data.tags[0] is string && data.tags[0].size() <= 50))));
+        }
+
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidId(memoryId)
+          && isValidMemory(incoming())
+          && incoming().createdAt == request.time;
+        allow update: if isOwner(userId)
+          && isValidMemory(incoming())
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId);
+      }
+
+      match /goals/{goalId} {
+        function isValidGoal(data) {
+          return data.keys().hasAll(['userId', 'description', 'status', 'progress', 'createdAt'])
+            && data.userId == userId
+            && data.description is string && data.description.size() <= 500
+            && data.status in ["active", "completed", "abandoned"]
+            && data.progress is number
+            && data.createdAt is timestamp;
+        }
+
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidId(goalId)
+          && isValidGoal(incoming())
+          && incoming().createdAt == request.time;
+        allow update: if isOwner(userId)
+          && isValidGoal(incoming())
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId);
+      }
+
+      match /events/{eventId} {
+        function isValidEvent(data) {
+          return data.keys().hasAll(['userId', 'type', 'message', 'source', 'createdAt'])
+            && data.userId == userId
+            && data.type is string && data.type.size() <= 100
+            && data.message is string && data.message.size() <= 500
+            && data.source is string && data.source.size() <= 100
+            && data.createdAt is timestamp;
+        }
+
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidId(eventId)
+          && isValidEvent(incoming())
+          && incoming().createdAt == request.time;
+        allow update: if isOwner(userId)
+          && isValidEvent(incoming())
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

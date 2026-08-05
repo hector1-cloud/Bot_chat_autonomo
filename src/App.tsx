@@ -6,12 +6,14 @@ import { ApiInspector } from './components/ApiInspector';
 import { WebcamCompanionPanel } from './components/WebcamCompanionPanel';
 import { FreeApisHub } from './components/FreeApisHub';
 import { CognitiveStudioPanel } from './components/CognitiveStudioPanel';
+import { SandboxesHub } from './components/SandboxesHub';
+import { SystemConsole } from './components/SystemConsole';
 import { ChatMessage, ExpressionArchetype, FacialMorphTargets, MicroexpressionAnalysis, PresetScenario } from './types/microexpressions';
 import { DEFAULT_MORPH_TARGETS, analyzeTextHeuristically } from './utils/microexpressionsEngine';
 import { audioEngine } from './utils/audioEngine';
 import { cognitiveEngine } from './utils/cognitiveEngine';
 import { generateGeminiResponse } from './utils/geminiService';
-import { Video, Globe, Activity, Eye, Sparkles, Brain } from 'lucide-react';
+import { Video, Globe, Activity, Eye, Sparkles, Brain, Package, Server } from 'lucide-react';
 
 const DEFAULT_WELCOME_MSG: ChatMessage = {
   id: 'msg-welcome',
@@ -63,10 +65,11 @@ export const App: React.FC = () => {
 
   const [inspectorTab, setInspectorTab] = useState<'morphs' | 'muscles' | 'affective' | 'json'>('morphs');
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
+  const [realtimeConnected, setRealtimeConnected] = useState<boolean>(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | undefined>(undefined);
 
   // Navigation Studio Mode Tab
-  const [activeStudioView, setActiveStudioView] = useState<'chat' | 'apis' | 'inspector' | 'cognitive'>('chat');
+  const [activeStudioView, setActiveStudioView] = useState<'chat' | 'apis' | 'inspector' | 'cognitive' | 'sandboxes' | 'infrastructure'>('chat');
   const [webcamGaze, setWebcamGaze] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const visemeIntervalRef = useRef<number | null>(null);
@@ -175,11 +178,25 @@ export const App: React.FC = () => {
     setIsLoading(true);
 
     try {
+      let injectedData = '';
+      if (text.toLowerCase().startsWith('/clima')) {
+        const city = text.slice(6).trim() || 'Madrid';
+        try {
+          const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
+          const weatherData = await res.json();
+          const temp = weatherData.current_condition[0].temp_C;
+          const desc = weatherData.current_condition[0].weatherDesc[0].value;
+          injectedData = `\n[SISTEMA: Datos del clima en tiempo real obtenidos para ${city}: ${temp}°C, ${desc}. Integra esta información en tu respuesta de forma natural y tierna.]`;
+        } catch (e) {
+          injectedData = `\n[SISTEMA: No se pudo obtener el clima en tiempo real para ${city}. Disculpa amablemente la indisponibilidad.]`;
+        }
+      }
+
       const cognitiveState = cognitiveEngine.getState();
       
       // Call Gemini Service
       const data = await generateGeminiResponse({
-        message: text,
+        message: text + injectedData,
         history: messages.slice(-6).map((m) => ({ sender: m.sender, text: m.text })),
         cognitiveState,
         memoriesSummary: cognitiveEngine.getMemoriesSummaryForPrompt(),
@@ -210,6 +227,7 @@ export const App: React.FC = () => {
         text: data.botResponse || 'Comprendo lo que mencionas.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         microexpressions: data.microexpressions,
+        imageUrl: (data as any).imageUrl,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -299,9 +317,10 @@ export const App: React.FC = () => {
   };
 
   return (
+    
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header */}
-      <Header hasApiKey={hasApiKey} />
+      <Header hasApiKey={hasApiKey} realtimeConnected={realtimeConnected} />
 
       {/* Studio View Navigation Toolbar */}
       <div className="bg-slate-900 border-b border-slate-800/80 px-4 sm:px-6 py-2.5">
@@ -354,6 +373,28 @@ export const App: React.FC = () => {
               <Activity className="w-4 h-4 text-emerald-300" />
               <span>Inspector de Microexpresiones</span>
             </button>
+            <button
+              onClick={() => setActiveStudioView('sandboxes')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
+                activeStudioView === 'sandboxes'
+                  ? 'bg-indigo-600 text-white shadow font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Package className="w-4 h-4 text-orange-300" />
+              <span>Mini Apps & Sandboxes</span>
+            </button>
+            <button
+              onClick={() => setActiveStudioView('infrastructure')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
+                activeStudioView === 'infrastructure'
+                  ? 'bg-indigo-600 text-white shadow font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Server className="w-4 h-4 text-emerald-400" />
+              <span>Infrastructure</span>
+            </button>
           </div>
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
@@ -389,6 +430,20 @@ export const App: React.FC = () => {
             onAutonomousQuestion={handleAutonomousQuestion}
             onSensorTelemetryUpdate={(telemetry) => {
               latestSensorTelemetryRef.current = telemetry;
+              
+              // Mirror or react to user's microexpressions if not actively answering/speaking
+              if (!isSpeaking && !isLoading) {
+                if (telemetry.smileScore > 0.65) {
+                  setCurrentArchetype('subtle_smile');
+                  setCurrentMorphs({ ...DEFAULT_MORPH_TARGETS.subtle_smile, lipCornerPuller: 0.3, cheekRaiser: 0.3 });
+                } else if (telemetry.surpriseScore > 0.45) {
+                  setCurrentArchetype('controlled_surprise');
+                  setCurrentMorphs({ ...DEFAULT_MORPH_TARGETS.controlled_surprise, browInnerUp: 0.5, eyeWide: 0.5 });
+                } else if (telemetry.focusScore > 0.7) {
+                  setCurrentArchetype('deep_concentration');
+                  setCurrentMorphs({ ...DEFAULT_MORPH_TARGETS.deep_concentration, browLowerer: 0.4, eyeSquintLeft: 0.3, eyeSquintRight: 0.3 });
+                }
+              }
             }}
             onWebcamGazeUpdate={(gaze) => {
               setWebcamGaze(gaze);
@@ -437,6 +492,18 @@ export const App: React.FC = () => {
                 activeTab={inspectorTab}
                 setActiveTab={setInspectorTab}
               />
+            </div>
+          )}
+
+          {activeStudioView === 'sandboxes' && (
+            <div className="h-[620px]">
+              <SandboxesHub />
+            </div>
+          )}
+
+          {activeStudioView === 'infrastructure' && (
+            <div className="h-[620px]">
+              <SystemConsole />
             </div>
           )}
         </div>

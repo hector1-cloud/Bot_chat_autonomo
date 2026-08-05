@@ -56,6 +56,7 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   microexpressions?: MicroexpressionAnalysis;
+  imageUrl?: string;
   processingState?: 'thinking' | 'ready' | 'speaking';
 }
 

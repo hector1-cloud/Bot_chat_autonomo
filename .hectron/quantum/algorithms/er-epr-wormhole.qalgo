@@ -1,0 +1,12 @@
+# ALGORITMO CUÁNTICO: INDUCCIÓN WORMHOLE TRAVESABLE
+
+Basado en conjectura ER=EPR (Maldacena-Susskind):
+
+1. Preparar estado entrelazado máximo |Ψ⟩ = (1/√D) ∑ |i⟩_A |i⟩_B (D = dim Hilbert grande)
+2. Inyectar choque negativo (negative null energy) vía Casimir boost
+3. Aplicar Quantum Fourier Transform dual para abrir garganta traversable
+4. Teleportar materia/qubits a través del bridge ER
+5. Colapsar controladamente → Manipular posición/estructura materia remota
+
+Requisito teórico: Computación cuántica gravedad-inducida + energía negativa controlada
+Estado actual: Simulable en pequeña escala (AdS/CFT correspondence)

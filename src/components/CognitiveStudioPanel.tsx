@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cognitiveEngine } from '../utils/cognitiveEngine';
 import { CognitiveAgentState, MemoryCategory, UserGoal } from '../types/cognitive';
-import { Brain, Sparkles, Target, Activity, Plus, Trash2, ShieldCheck, RefreshCw, Layers, Sliders, Zap, Download, Upload, CheckCircle, Server, Database, Code, Copy, Check } from 'lucide-react';
+import { Brain, Sparkles, Target, Activity, Plus, Trash2, ShieldCheck, RefreshCw, Layers, Sliders, Zap, Download, Upload, CheckCircle, Server, Database, Code, Copy, Check, TerminalSquare } from 'lucide-react';
+import { BashConsole } from './BashConsole';
 
 export const CognitiveStudioPanel: React.FC = () => {
   const [state, setState] = useState<CognitiveAgentState>(() => cognitiveEngine.getState());
-  const [activeTab, setActiveTab] = useState<'memories' | 'personality' | 'goals' | 'events' | 'hectron'>('memories');
+  const [activeTab, setActiveTab] = useState<'memories' | 'personality' | 'goals' | 'events' | 'hectron' | 'infrastructure'>('memories');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<MemoryCategory | 'all'>('all');
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export const CognitiveStudioPanel: React.FC = () => {
       )}
 
       {/* Tabs Bar */}
-      <div className="grid grid-cols-5 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+      <div className="grid grid-cols-6 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
         <button
           onClick={() => setActiveTab('memories')}
           className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
@@ -199,7 +200,19 @@ export const CognitiveStudioPanel: React.FC = () => {
           }`}
         >
           <Server className="w-4 h-4 text-cyan-300" />
-          <span className="truncate font-bold">HECTRON API</span>
+          <span className="truncate font-bold hidden sm:inline">HECTRON API</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('infrastructure')}
+          className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+            activeTab === 'infrastructure'
+              ? 'bg-emerald-600 text-white shadow font-bold'
+              : 'text-emerald-400 hover:text-emerald-200'
+          }`}
+        >
+          <TerminalSquare className="w-4 h-4 text-emerald-300" />
+          <span className="truncate font-bold hidden sm:inline">System</span>
         </button>
       </div>
 
@@ -562,6 +575,13 @@ httpx==0.28.1`}
         )`}
             </pre>
           </div>
+        </div>
+      )}
+
+      {/* Tab 6: Infrastructure / Bash Console */}
+      {activeTab === 'infrastructure' && (
+        <div className="flex-1 min-h-0 relative h-full">
+          <BashConsole />
         </div>
       )}
     </div>

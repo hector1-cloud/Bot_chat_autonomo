@@ -17,7 +17,7 @@ interface AvatarCanvasProps {
   avatarStyle: 'modern' | 'cyberpunk' | 'anime' | 'humanoid';
   setAvatarStyle: (style: 'modern' | 'cyberpunk' | 'anime' | 'humanoid') => void;
   webcamGaze?: { x: number; y: number };
-  activeStudioView?: 'chat' | 'apis' | 'inspector' | 'cognitive';
+  activeStudioView?: 'chat' | 'apis' | 'inspector' | 'cognitive' | 'sandboxes' | 'infrastructure' | string;
 }
 
 export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
@@ -43,6 +43,9 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
   const [hairColor, setHairColor] = useState<'pink' | 'violet' | 'gold' | 'cyan'>('pink');
   const [eyeColorOption, setEyeColorOption] = useState<'violet' | 'sapphire' | 'emerald' | 'ruby'>('violet');
   const [accessory, setAccessory] = useState<'ribbon' | 'catears' | 'headphones' | 'flower'>('ribbon');
+  const [hairStyleOption, setHairStyleOption] = useState<'twintails' | 'bob' | 'long'>('twintails');
+  const [skinToneOption, setSkinToneOption] = useState<'light' | 'medium' | 'dark'>('light');
+  const [clothingOption, setClothingOption] = useState<'casual' | 'formal' | 'sport'>('casual');
   const [showCustomizer, setShowCustomizer] = useState<boolean>(false);
 
   // Gaze Tracking state: 'cursor' | 'webcam' | 'attention' | 'auto'
@@ -208,6 +211,9 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
             hairColor,
             eyeColorOption,
             accessory,
+            hairStyleOption,
+            skinToneOption,
+            clothingOption,
             transformationMode,
             cameraZoom,
             ignitionProgress,
@@ -305,10 +311,58 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* Skin Tone */}
+            <div>
+              <span className="text-[10px] text-slate-400 block mb-1">Tono de Piel:</span>
+              <div className="flex gap-1">
+                {[
+                  { id: 'light', name: 'Claro' },
+                  { id: 'medium', name: 'Medio' },
+                  { id: 'dark', name: 'Oscuro' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSkinToneOption(s.id as any)}
+                    className={`flex-1 py-1 px-1 rounded text-[10px] border flex items-center justify-center gap-1 transition-all ${
+                      skinToneOption === s.id
+                        ? 'border-pink-500 bg-pink-500/20 text-white font-bold'
+                        : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="truncate">{s.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Hair Style */}
+            <div>
+              <span className="text-[10px] text-slate-400 block mb-1">Peinado:</span>
+              <div className="flex gap-1">
+                {[
+                  { id: 'twintails', name: 'Coletas' },
+                  { id: 'bob', name: 'Corto' },
+                  { id: 'long', name: 'Largo' },
+                ].map((h) => (
+                  <button
+                    key={h.id}
+                    onClick={() => setHairStyleOption(h.id as any)}
+                    className={`flex-1 py-1 px-1 rounded text-[10px] border flex items-center justify-center gap-1 transition-all ${
+                      hairStyleOption === h.id
+                        ? 'border-pink-500 bg-pink-500/20 text-white font-bold'
+                        : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="truncate">{h.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Hair Color */}
             <div>
-              <span className="text-[10px] text-slate-400 block mb-1">Cabello 3D:</span>
+              <span className="text-[10px] text-slate-400 block mb-1">Color de Cabello:</span>
               <div className="flex gap-1">
                 {[
                   { id: 'pink', name: 'Rosado', bg: 'bg-pink-500' },
@@ -353,6 +407,30 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
                   >
                     <span className={`w-2 h-2 rounded-full ${e.bg}`} />
                     <span className="truncate">{e.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Clothing */}
+            <div>
+              <span className="text-[10px] text-slate-400 block mb-1">Vestimenta Básica:</span>
+              <div className="flex gap-1">
+                {[
+                  { id: 'casual', name: 'Casual' },
+                  { id: 'formal', name: 'Formal' },
+                  { id: 'sport', name: 'Deportiva' },
+                ].map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setClothingOption(c.id as any)}
+                    className={`flex-1 py-1 px-1 rounded text-[10px] border flex items-center justify-center gap-1 transition-all ${
+                      clothingOption === c.id
+                        ? 'border-pink-500 bg-pink-500/20 text-white font-bold'
+                        : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="truncate">{c.name}</span>
                   </button>
                 ))}
               </div>
@@ -717,6 +795,9 @@ function draw3DFemaleAvatar(
   hairColorOpt: string,
   eyeColorOpt: string,
   accessoryOpt: string,
+  hairStyleOpt: string,
+  skinToneOpt: string,
+  clothingOpt: string,
   transformationMode: 'normal' | 'astronaut_flora' | 'flaming_skeleton' = 'normal',
   cameraZoom: number = 1.0,
   ignitionProgress: number = 0,
@@ -746,15 +827,30 @@ function draw3DFemaleAvatar(
   // 1. Draw Suit / Shoulders
   const neckX = cx + yawOffset * 0.4;
   const neckY = cy + 110;
+  
+  let skinColors = ['#fbcfe8', '#fde047', '#fce7f3'];
+  let skinColorsBody = ['#f472b6', '#fff1f2', '#f43f5e'];
+  let faceSkinGradColors = ['#ffffff', '#fff1f2', '#ffe4e6', '#fecdd3'];
+
+  if (skinToneOpt === 'medium') {
+    skinColors = ['#d4a373', '#e9b88a', '#cda683'];
+    skinColorsBody = ['#c79469', '#dfba9b', '#ab7a52'];
+    faceSkinGradColors = ['#f5d0b5', '#eac1a3', '#dfba9b', '#d2a784'];
+  } else if (skinToneOpt === 'dark') {
+    skinColors = ['#7c5236', '#9c6b4b', '#653c23'];
+    skinColorsBody = ['#694229', '#8a5b3c', '#54321d'];
+    faceSkinGradColors = ['#976949', '#85583b', '#724a30', '#633d26'];
+  }
 
   if (isAstronautScene) {
     drawOrangeAstronautSuit(ctx, neckX, neckY, ignitionProgress, flameTime);
   } else {
     // Normal Cute Outfit Neck & Shoulders
+
     const neckGrad = ctx.createLinearGradient(neckX, neckY, neckX, neckY + 70);
-    neckGrad.addColorStop(0, '#fbcfe8');
-    neckGrad.addColorStop(0.3, '#fde047');
-    neckGrad.addColorStop(1, '#fce7f3');
+    neckGrad.addColorStop(0, skinColors[0]);
+    neckGrad.addColorStop(0.3, skinColors[1]);
+    neckGrad.addColorStop(1, skinColors[2]);
 
     ctx.beginPath();
     ctx.moveTo(neckX - 110, neckY + 70);
@@ -762,7 +858,7 @@ function draw3DFemaleAvatar(
     ctx.lineTo(neckX + 45, neckY + 10);
     ctx.lineTo(neckX - 45, neckY + 10);
     ctx.closePath();
-    ctx.fillStyle = '#1e1b4b';
+    ctx.fillStyle = clothingOpt === 'formal' ? '#0f172a' : clothingOpt === 'sport' ? '#ef4444' : '#1e1b4b';
     ctx.fill();
 
     ctx.beginPath();
@@ -770,15 +866,15 @@ function draw3DFemaleAvatar(
     ctx.lineTo(neckX, neckY + 35);
     ctx.lineTo(neckX + 45, neckY + 10);
     ctx.lineWidth = 3;
-    ctx.strokeStyle = '#f472b6';
+    ctx.strokeStyle = clothingOpt === 'formal' ? '#e2e8f0' : clothingOpt === 'sport' ? '#ffffff' : '#f472b6';
     ctx.stroke();
 
     ctx.beginPath();
     ctx.rect(neckX - 26, neckY - 20, 52, 50);
     const neckSkinGrad = ctx.createLinearGradient(neckX - 26, neckY, neckX + 26, neckY);
-    neckSkinGrad.addColorStop(0, '#f472b6');
-    neckSkinGrad.addColorStop(0.3, '#fff1f2');
-    neckSkinGrad.addColorStop(1, '#f43f5e');
+    neckSkinGrad.addColorStop(0, skinColorsBody[0]);
+    neckSkinGrad.addColorStop(0.3, skinColorsBody[1]);
+    neckSkinGrad.addColorStop(1, skinColorsBody[2]);
     ctx.fillStyle = neckSkinGrad;
     ctx.fill();
   }
@@ -822,33 +918,60 @@ function draw3DFemaleAvatar(
 
     // Back Hair
     ctx.save();
-    const leftPonytailX = cx - 110 + yawOffset * 0.3;
-    const rightPonytailX = cx + 110 + yawOffset * 0.3;
-    const ponytailY = cy + 40 + hairBounce;
+    if (hairStyleOpt === 'twintails') {
+      const leftPonytailX = cx - 110 + yawOffset * 0.3;
+      const rightPonytailX = cx + 110 + yawOffset * 0.3;
+      const ponytailY = cy + 40 + hairBounce;
 
-    const leftPonyGrad = ctx.createLinearGradient(leftPonytailX, ponytailY - 80, leftPonytailX - 40, ponytailY + 120);
-    leftPonyGrad.addColorStop(0, hairPrimary);
-    leftPonyGrad.addColorStop(0.5, hairShadow);
-    leftPonyGrad.addColorStop(1, hairHighlight);
+      const leftPonyGrad = ctx.createLinearGradient(leftPonytailX, ponytailY - 80, leftPonytailX - 40, ponytailY + 120);
+      leftPonyGrad.addColorStop(0, hairPrimary);
+      leftPonyGrad.addColorStop(0.5, hairShadow);
+      leftPonyGrad.addColorStop(1, hairHighlight);
 
-    ctx.beginPath();
-    ctx.moveTo(cx - 70, cy - 30);
-    ctx.bezierCurveTo(leftPonytailX - 30, ponytailY - 60, leftPonytailX - 80, ponytailY + 40, leftPonytailX - 20, ponytailY + 120);
-    ctx.bezierCurveTo(leftPonytailX, ponytailY + 80, cx - 80, cy + 60, cx - 75, cy + 20);
-    ctx.fillStyle = leftPonyGrad;
-    ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - 70, cy - 30);
+      ctx.bezierCurveTo(leftPonytailX - 30, ponytailY - 60, leftPonytailX - 80, ponytailY + 40, leftPonytailX - 20, ponytailY + 120);
+      ctx.bezierCurveTo(leftPonytailX, ponytailY + 80, cx - 80, cy + 60, cx - 75, cy + 20);
+      ctx.fillStyle = leftPonyGrad;
+      ctx.fill();
 
-    const rightPonyGrad = ctx.createLinearGradient(rightPonytailX, ponytailY - 80, rightPonytailX + 40, ponytailY + 120);
-    rightPonyGrad.addColorStop(0, hairPrimary);
-    rightPonyGrad.addColorStop(0.5, hairShadow);
-    rightPonyGrad.addColorStop(1, hairHighlight);
+      const rightPonyGrad = ctx.createLinearGradient(rightPonytailX, ponytailY - 80, rightPonytailX + 40, ponytailY + 120);
+      rightPonyGrad.addColorStop(0, hairPrimary);
+      rightPonyGrad.addColorStop(0.5, hairShadow);
+      rightPonyGrad.addColorStop(1, hairHighlight);
 
-    ctx.beginPath();
-    ctx.moveTo(cx + 70, cy - 30);
-    ctx.bezierCurveTo(rightPonytailX + 30, ponytailY - 60, rightPonytailX + 80, ponytailY + 40, rightPonytailX + 20, ponytailY + 120);
-    ctx.bezierCurveTo(rightPonytailX, ponytailY + 80, cx + 80, cy + 60, cx + 75, cy + 20);
-    ctx.fillStyle = rightPonyGrad;
-    ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + 70, cy - 30);
+      ctx.bezierCurveTo(rightPonytailX + 30, ponytailY - 60, rightPonytailX + 80, ponytailY + 40, rightPonytailX + 20, ponytailY + 120);
+      ctx.bezierCurveTo(rightPonytailX, ponytailY + 80, cx + 80, cy + 60, cx + 75, cy + 20);
+      ctx.fillStyle = rightPonyGrad;
+      ctx.fill();
+    } else if (hairStyleOpt === 'bob') {
+      // Bob cut
+      const bobGrad = ctx.createLinearGradient(cx, cy - 80, cx, cy + 120);
+      bobGrad.addColorStop(0, hairPrimary);
+      bobGrad.addColorStop(0.5, hairShadow);
+      bobGrad.addColorStop(1, hairHighlight);
+      
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 20 + hairBounce * 0.5, 120, 100, 0, 0, Math.PI);
+      ctx.fillStyle = bobGrad;
+      ctx.fill();
+    } else if (hairStyleOpt === 'long') {
+      // Long hair
+      const longGrad = ctx.createLinearGradient(cx, cy - 80, cx, cy + 200);
+      longGrad.addColorStop(0, hairPrimary);
+      longGrad.addColorStop(0.5, hairShadow);
+      longGrad.addColorStop(1, hairHighlight);
+      
+      ctx.beginPath();
+      ctx.moveTo(cx - 70, cy - 30);
+      ctx.bezierCurveTo(cx - 150, cy, cx - 120, cy + 200 + hairBounce, cx - 60, cy + 180 + hairBounce);
+      ctx.lineTo(cx + 60, cy + 180 + hairBounce);
+      ctx.bezierCurveTo(cx + 120, cy + 200 + hairBounce, cx + 150, cy, cx + 70, cy - 30);
+      ctx.fillStyle = longGrad;
+      ctx.fill();
+    }
     ctx.restore();
 
     // 3. Volumetric Skin Base
@@ -861,10 +984,10 @@ function draw3DFemaleAvatar(
       headY + 10,
       145
     );
-    headSkinGrad.addColorStop(0, '#ffffff');
-    headSkinGrad.addColorStop(0.35, '#fff1f2');
-    headSkinGrad.addColorStop(0.85, '#ffe4e6');
-    headSkinGrad.addColorStop(1, '#fecdd3');
+    headSkinGrad.addColorStop(0, faceSkinGradColors[0] || '#ffffff');
+    headSkinGrad.addColorStop(0.35, faceSkinGradColors[1] || '#fff1f2');
+    headSkinGrad.addColorStop(0.85, faceSkinGradColors[2] || '#ffe4e6');
+    headSkinGrad.addColorStop(1, faceSkinGradColors[3] || '#fecdd3');
 
     ctx.beginPath();
     ctx.moveTo(headX - 110, headY - 40);
@@ -1473,6 +1596,7 @@ function renderCute3DEye(
   // Eye Socket Base (Sclera / Eye White with subtle top shadow)
   ctx.beginPath();
   ctx.ellipse(x, y, radiusX, heightY, 0, 0, Math.PI * 2);
+  if (isNaN(x) || isNaN(y) || isNaN(heightY)) console.error("NaN detected in eye:", {x, y, heightY});
   const scleraGrad = ctx.createLinearGradient(x, y - heightY, x, y + heightY);
   scleraGrad.addColorStop(0, '#cbd5e1'); // Upper eyelid shadow
   scleraGrad.addColorStop(0.3, '#ffffff');

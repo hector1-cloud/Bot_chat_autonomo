@@ -13,6 +13,7 @@
     "@google/genai": "^2.15.0",
     "clsx": "^2.1.1",
     "express": "^5.2.1",
+    "firebase": "^12.17.1",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

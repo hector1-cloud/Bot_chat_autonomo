@@ -12,8 +12,8 @@ class AudioEngine {
   private audioCtx: AudioContext | null = null;
   private selectedVoice: SpeechSynthesisVoice | null = null;
   private voicesLoaded: boolean = false;
-  private keepAliveTimer: number | null = null;
   private visemeTimer: number | null = null;
+  private isActive: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -117,18 +117,10 @@ class AudioEngine {
 
     this.playChime(640, 100);
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'es-ES';
-    utterance.rate = 1.02;
-    utterance.pitch = 1.0;
-
-    if (this.selectedVoice) {
-      utterance.voice = this.selectedVoice;
-    }
-
+    const chunks = cleanText.match(/[^.!?]+[.!?]*\s*/g)?.map(c => c.trim()).filter(c => c.length > 0) || [cleanText];
+    let currentChunkIndex = 0;
     let started = false;
     let ended = false;
-    const maxDurationMs = Math.max(3500, cleanText.length * 90);
 
     // Viseme simulation interval
     const startVisemes = () => {
@@ -145,84 +137,70 @@ class AudioEngine {
         clearInterval(this.visemeTimer);
         this.visemeTimer = null;
       }
-      if (this.keepAliveTimer) {
-        clearInterval(this.keepAliveTimer);
-        this.keepAliveTimer = null;
-      }
       options.onViseme?.(0);
     };
 
-    const handleStart = () => {
-      if (started) return;
-      started = true;
-      options.onStart?.();
-      startVisemes();
-
-      // Chrome keep-alive bug fix: periodically pause/resume every 8s to prevent cutoffs
-      this.keepAliveTimer = window.setInterval(() => {
-        if (typeof window !== 'undefined' && window.speechSynthesis.speaking) {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }
-      }, 8000);
-    };
-
-    const handleEnd = () => {
-      if (ended) return;
-      ended = true;
-      stopVisemes();
-      options.onEnd?.();
-    };
-
-    utterance.onstart = () => {
-      handleStart();
-    };
-
-    utterance.onend = () => {
-      handleEnd();
-    };
-
-    utterance.onerror = (err) => {
-      console.warn('Speech synthesis utterance error:', err);
-      handleEnd();
-      options.onError?.(err);
-    };
-
-    try {
-      // Ensure browser speech queue is clear & resumed
-      window.speechSynthesis.resume();
-      window.speechSynthesis.speak(utterance);
-
-      // Fallback timer if onstart doesn't fire immediately
-      setTimeout(() => {
-        if (!started && !ended) {
-          handleStart();
-        }
-      }, 200);
-
-      // Max duration safety fallback
-      setTimeout(() => {
+    const playNextChunk = () => {
+      if (currentChunkIndex >= chunks.length || !this.isActive) {
         if (!ended) {
-          handleEnd();
+          ended = true;
+          stopVisemes();
+          options.onEnd?.();
         }
-      }, maxDurationMs);
-    } catch (err) {
-      stopVisemes();
-      console.error('Failed to trigger speechSynthesis.speak:', err);
-      options.onError?.(err);
-    }
-  }
+        return;
+      }
+
+      const chunkText = chunks[currentChunkIndex];
+      const utterance = new SpeechSynthesisUtterance(chunkText);
+      utterance.lang = 'es-ES';
+      utterance.rate = 1.02;
+      utterance.pitch = 1.0;
+
+      if (this.selectedVoice) {
+        utterance.voice = this.selectedVoice;
+      }
+
+      utterance.onstart = () => {
+        if (!started) {
+          started = true;
+          options.onStart?.();
+          startVisemes();
+        }
+      };
+
+      utterance.onend = () => {
+        currentChunkIndex++;
+        if (this.isActive) {
+           playNextChunk();
+        }
+      };
+
+      utterance.onerror = (err) => {
+        console.warn('Speech synthesis utterance error:', err);
+        currentChunkIndex++;
+        if (this.isActive) playNextChunk();
+      };
+
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.error('Failed to trigger speechSynthesis.speak:', err);
+        currentChunkIndex++;
+        if (this.isActive) playNextChunk();
+      }
+    };
+
+    this.isActive = true;
+    window.speechSynthesis.resume();
+    playNextChunk();
   }
 
   // Stop active speech
   public stop(): void {
+    this.isActive = false;
     if (this.visemeTimer) {
       clearInterval(this.visemeTimer);
       this.visemeTimer = null;
-    }
-    if (this.keepAliveTimer) {
-      clearInterval(this.keepAliveTimer);
-      this.keepAliveTimer = null;
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
