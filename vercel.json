@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "bot-chat-autonomo": {
+      "development": {
+        "fallback": "bot-chat-autonomo.vercel.app"
+      }
+    }
+  }
+}

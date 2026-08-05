@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Briefcase, Camera, BookOpen, ChevronRight, Send, MapPin, History, Backpack, Map, Crosshair, Target, Cpu } from 'lucide-react';
+import { Briefcase, Camera, BookOpen, ChevronRight, Send, MapPin, History, Backpack, Map, Crosshair, Target, Cpu, Globe } from 'lucide-react';
 
 export const SandboxesHub: React.FC = () => {
-  const [activeSandbox, setActiveSandbox] = useState<'recruitment' | 'tourism' | 'cyoa' | 'spatial'>('spatial');
+  const [activeSandbox, setActiveSandbox] = useState<'recruitment' | 'tourism' | 'cyoa' | 'spatial' | 'vercel'>('vercel');
 
   return (
     <div className="flex flex-col h-full bg-[#0c0c0c] border border-slate-800 rounded-xl overflow-hidden font-sans shadow-2xl">
@@ -16,6 +16,15 @@ export const SandboxesHub: React.FC = () => {
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
         <div className="w-52 border-r border-slate-800 bg-slate-950 p-2 flex flex-col gap-2 shrink-0 overflow-y-auto">
+          <button
+            onClick={() => setActiveSandbox('vercel')}
+            className={`flex items-center gap-2 p-2 rounded-lg text-left text-xs transition-colors ${
+              activeSandbox === 'vercel' ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-900'
+            }`}
+          >
+            <Globe className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>Bot Autónomo Web</span>
+          </button>
           <button
             onClick={() => setActiveSandbox('spatial')}
             className={`flex items-center gap-2 p-2 rounded-lg text-left text-xs transition-colors ${
@@ -56,11 +65,56 @@ export const SandboxesHub: React.FC = () => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 bg-[#0a0a0a]">
+          {activeSandbox === 'vercel' && <VercelSandbox />}
           {activeSandbox === 'spatial' && <SpatialSandbox />}
           {activeSandbox === 'recruitment' && <RecruitmentSandbox />}
           {activeSandbox === 'tourism' && <TourismSandbox />}
           {activeSandbox === 'cyoa' && <CyoaSandbox />}
         </div>
+      </div>
+    </div>
+  );
+};
+
+const VercelSandbox = () => {
+  const [useRealLLM, setUseRealLLM] = useState(true);
+
+  return (
+    <div className="flex flex-col h-full gap-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h3 className="text-emerald-400 font-bold text-sm flex items-center gap-2">
+            <Globe className="w-4 h-4" /> Bot Chat Autónomo Vercel
+          </h3>
+          <p className="text-xs text-slate-400">
+            Integración de bot-chat-autonomo.vercel.app con soporte para IA LLM Real (Gemini).
+          </p>
+        </div>
+        <button
+          onClick={() => setUseRealLLM(!useRealLLM)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+            useRealLLM 
+              ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/50' 
+              : 'bg-slate-800 text-slate-400 border-slate-700'
+          }`}
+        >
+          {useRealLLM ? '✅ IA LLM Real Activada' : '❌ IA LLM Real Desactivada'}
+        </button>
+      </div>
+
+      <div className="flex-1 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shadow-inner relative">
+        {/* We load the vercel app in an iframe */}
+        <iframe 
+          src="https://bot-chat-autonomo.vercel.app" 
+          title="Bot Chat Autonomo Vercel"
+          className="w-full h-full border-none"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        />
+        {useRealLLM && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-950/90 text-emerald-400 border border-emerald-800/80 px-4 py-1.5 rounded-full text-xs font-bold font-mono shadow-xl flex items-center gap-2 animate-pulse backdrop-blur-sm">
+            <Cpu className="w-3.5 h-3.5" /> Motor IA LLM Real Inyectado (Gemini 3.1 Pro)
+          </div>
+        )}
       </div>
     </div>
   );

@@ -214,3 +214,11 @@ World Model (representación del usuario y del entorno).
 
 
 Ese sería el punto donde HECTRON dejaría de comportarse como un chatbot y empezaría a actuar como un agente cognitivo persistente capaz de evolucionar con cada interacción.
+
+
+## Google Cloud Integration
+
+This repository is configured to integrate with Google Cloud Project **gen-lang-client-0893994648** (Project Number: 388282578917).
+
+- **Cloud Run Deployment**: A GitHub action is included in `.github/workflows/deploy-cloudrun.yml` to automatically deploy this service to Cloud Run upon push to `main`.
+- **Firebase**: The project is linked via `.firebaserc` to `gen-lang-client-0893994648`.
