@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Terminal, Shield, Cpu, Activity, Server, Database, Brain, HardDrive,
   CheckCircle, RefreshCw, Layers, Search, Filter, AlertCircle, Info,
-  Check, ArrowUpRight, Zap
+  Check, ArrowUpRight, Zap, Radio
 } from 'lucide-react';
+import { DashboardWidget } from './DashboardWidget';
+import { BashConsole } from './BashConsole';
 
 interface SystemConsoleProps {
   // Optional props
@@ -53,6 +55,68 @@ export const SystemConsole: React.FC<SystemConsoleProps> = () => {
     ramUsage: 42,
     latencyMs: 120,
   });
+
+  // Automated Periodic Health-Check State Indicator (Green/Red)
+  const [healthIndicator, setHealthIndicator] = useState<{
+    status: 'GREEN' | 'RED';
+    cloudSqlStatus: 'GREEN' | 'RED';
+    geminiStatus: 'GREEN' | 'RED';
+    fastApiStatus: 'GREEN' | 'RED';
+    lastChecked: string;
+    pingLatencyMs: number;
+    checkCount: number;
+  }>({
+    status: 'GREEN',
+    cloudSqlStatus: 'GREEN',
+    geminiStatus: 'GREEN',
+    fastApiStatus: 'GREEN',
+    lastChecked: new Date().toLocaleTimeString(),
+    pingLatencyMs: 14,
+    checkCount: 1,
+  });
+
+  const runHealthCheckPing = async () => {
+    const startTime = performance.now();
+    try {
+      const res = await fetch('/api/health');
+      const duration = Math.round(performance.now() - startTime);
+      if (res.ok) {
+        const data = await res.json();
+        setHealthIndicator(prev => ({
+          status: 'GREEN',
+          cloudSqlStatus: data.cloudSqlStatus === 'HEALTHY' ? 'GREEN' : 'RED',
+          geminiStatus: data.hasGeminiKey || data.geminiApiStatus === 'ONLINE' || data.geminiApiStatus === 'HEURISTIC_MODE' ? 'GREEN' : 'RED',
+          fastApiStatus: data.fastapiBridge === 'connected' ? 'GREEN' : 'RED',
+          lastChecked: new Date().toLocaleTimeString(),
+          pingLatencyMs: duration,
+          checkCount: prev.checkCount + 1,
+        }));
+      } else {
+        setHealthIndicator(prev => ({
+          ...prev,
+          status: 'RED',
+          cloudSqlStatus: 'RED',
+          geminiStatus: 'RED',
+          lastChecked: new Date().toLocaleTimeString(),
+          pingLatencyMs: duration,
+        }));
+      }
+    } catch (err) {
+      setHealthIndicator(prev => ({
+        ...prev,
+        status: 'RED',
+        cloudSqlStatus: 'RED',
+        geminiStatus: 'RED',
+        lastChecked: new Date().toLocaleTimeString(),
+      }));
+    }
+  };
+
+  useEffect(() => {
+    runHealthCheckPing();
+    const interval = setInterval(runHealthCheckPing, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Agent Memory Operations State
   const [memoryLogs, setMemoryLogs] = useState<MemoryItem[]>([
@@ -326,6 +390,95 @@ export const SystemConsole: React.FC<SystemConsoleProps> = () => {
         {/* 1. System Health & Infrastructure Telemetry */}
         {activeTab === 'health' && (
           <div className="space-y-4">
+            {/* Automated Health Check Monitor (Green/Red) */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3 shadow-lg">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                  <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                    Automated Health-Check Pipeline
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                    Pinging every 10s • Latency {healthIndicator.pingLatencyMs}ms
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    Último ping: {healthIndicator.lastChecked} (# {healthIndicator.checkCount})
+                  </span>
+                  <button
+                    onClick={runHealthCheckPing}
+                    className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                    title="Ejecutar ping de verificación manualmente"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Indicator Badges (Green/Red) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Cloud SQL Status */}
+                <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                  healthIndicator.cloudSqlStatus === 'GREEN'
+                    ? 'bg-emerald-950/30 border-emerald-900/60 text-emerald-300'
+                    : 'bg-rose-950/30 border-rose-900/60 text-rose-300'
+                }`}>
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] font-bold">Cloud SQL Connectivity</p>
+                    <p className="text-[10px] text-slate-400 font-mono">gen-lang-client-0893994648</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <span className={`w-2.5 h-2.5 rounded-full ${
+                      healthIndicator.cloudSqlStatus === 'GREEN' ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'
+                    }`} />
+                    <span>{healthIndicator.cloudSqlStatus === 'GREEN' ? 'GREEN (Online)' : 'RED (Error)'}</span>
+                  </div>
+                </div>
+
+                {/* Gemini API Status */}
+                <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                  healthIndicator.geminiStatus === 'GREEN'
+                    ? 'bg-purple-950/30 border-purple-900/60 text-purple-300'
+                    : 'bg-rose-950/30 border-rose-900/60 text-rose-300'
+                }`}>
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] font-bold">Gemini API Pipeline</p>
+                    <p className="text-[10px] text-slate-400 font-mono">Gemini 3.6 Flash / 1.5</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <span className={`w-2.5 h-2.5 rounded-full ${
+                      healthIndicator.geminiStatus === 'GREEN' ? 'bg-purple-400 animate-pulse' : 'bg-rose-500'
+                    }`} />
+                    <span>{healthIndicator.geminiStatus === 'GREEN' ? 'GREEN (Operativo)' : 'RED (Inaccesible)'}</span>
+                  </div>
+                </div>
+
+                {/* FastAPI / Express Backend Bridge Status */}
+                <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                  healthIndicator.fastApiStatus === 'GREEN'
+                    ? 'bg-blue-950/30 border-blue-900/60 text-blue-300'
+                    : 'bg-rose-950/30 border-rose-900/60 text-rose-300'
+                }`}>
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] font-bold">Express / FastAPI Bridge</p>
+                    <p className="text-[10px] text-slate-400 font-mono">Puerto 3000 Node / Uvicorn</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <span className={`w-2.5 h-2.5 rounded-full ${
+                      healthIndicator.fastApiStatus === 'GREEN' ? 'bg-blue-400 animate-pulse' : 'bg-rose-500'
+                    }`} />
+                    <span>{healthIndicator.fastApiStatus === 'GREEN' ? 'GREEN (Conectado)' : 'RED (Desconectado)'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cloud SQL Dedicated Dashboard Widget */}
+            <DashboardWidget />
+
+            {/* Telemetry Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
@@ -532,37 +685,8 @@ export const SystemConsole: React.FC<SystemConsoleProps> = () => {
 
         {/* 4. Restricted Interactive Shell */}
         {activeTab === 'shell' && (
-          <div className="flex flex-col h-[420px] bg-black rounded-xl border border-slate-800 overflow-hidden font-mono text-xs">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-1">
-              {shellLogs.map((log) => (
-                <div key={log.id} className="whitespace-pre-wrap">
-                  {log.type === 'command' && (
-                    <div className="flex items-start text-slate-300">
-                      <span className="text-emerald-400 font-bold mr-2">hectron@system:~$</span>
-                      <span>{log.content}</span>
-                    </div>
-                  )}
-                  {log.type === 'stdout' && <div className="text-slate-400 pl-2">{log.content}</div>}
-                  {log.type === 'stderr' && <div className="text-red-400 pl-2">{log.content}</div>}
-                  {log.type === 'system' && <div className="text-indigo-400/80 italic">{log.content}</div>}
-                </div>
-              ))}
-              {isExecuting && (
-                <div className="text-amber-400/80 animate-pulse pl-2">Executing command...</div>
-              )}
-            </div>
-
-            <form onSubmit={handleCommand} className="border-t border-slate-800 bg-slate-950 p-2 flex items-center gap-2">
-              <span className="text-emerald-400 font-bold pl-1">hectron@system:~$</span>
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                disabled={isExecuting}
-                placeholder="Escribe un comando (ej. date, uptime, python --version)..."
-                className="flex-1 bg-transparent border-none outline-none text-slate-200 placeholder-slate-700 text-xs"
-              />
-            </form>
+          <div className="h-[460px]">
+            <BashConsole />
           </div>
         )}
       </div>

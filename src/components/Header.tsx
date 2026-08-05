@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Cpu, Sparkles, BookOpen, Layers, X, ShieldCheck, Zap, Activity, Wifi, WifiOff } from 'lucide-react';
+import { Cpu, Sparkles, BookOpen, Layers, X, ShieldCheck, Zap, Activity, Wifi, WifiOff, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { useAuth } from './AuthProvider';
 
 interface HeaderProps {
   hasApiKey: boolean;
@@ -8,6 +9,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ hasApiKey, realtimeConnected = false }) => {
   const [showDocsModal, setShowDocsModal] = useState(false);
+  const { user, signInWithGoogle, logout } = useAuth();
 
   return (
     <>
@@ -36,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ hasApiKey, realtimeConnected = f
           </div>
 
           {/* Badges & Actions */}
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
             {/* Realtime Pipeline Status */}
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${
               realtimeConnected 
@@ -44,22 +46,51 @@ export const Header: React.FC<HeaderProps> = ({ hasApiKey, realtimeConnected = f
                 : 'bg-rose-950/30 border-rose-900/50 text-rose-400'
             }`}>
               {realtimeConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              <span>{realtimeConnected ? 'Pipeline Conectado' : 'Pipeline Desconectado'}</span>
+              <span className="hidden sm:inline">{realtimeConnected ? 'Pipeline Conectado' : 'Pipeline Desconectado'}</span>
             </div>
 
             {/* Status pill */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{hasApiKey ? 'Gemini 3.6 Flash Server' : 'Modo Heurístico Local'}</span>
+              <span className="hidden md:inline">{hasApiKey ? 'Gemini 3.6 Flash Server' : 'Modo Heurístico Local'}</span>
             </div>
+
+            {/* Firebase Auth Controls */}
+            {user ? (
+              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt={user.displayName || 'User'} className="w-5 h-5 rounded-full border border-indigo-500" />
+                ) : (
+                  <UserIcon className="w-3.5 h-3.5 text-indigo-400" />
+                )}
+                <span className="text-[11px] font-medium text-slate-200 hidden lg:inline max-w-[120px] truncate">
+                  {user.displayName || user.email?.split('@')[0]}
+                </span>
+                <button
+                  onClick={() => logout()}
+                  title="Cerrar sesión"
+                  className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => signInWithGoogle()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all shadow-md"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Acceder</span>
+              </button>
+            )}
 
             {/* Docs Modal Button */}
             <button
               onClick={() => setShowDocsModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all shadow-md"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-all border border-slate-700"
             >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Especificación API</span>
+              <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">Especificación API</span>
             </button>
           </div>
         </div>

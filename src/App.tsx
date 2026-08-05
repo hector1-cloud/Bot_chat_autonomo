@@ -8,12 +8,13 @@ import { FreeApisHub } from './components/FreeApisHub';
 import { CognitiveStudioPanel } from './components/CognitiveStudioPanel';
 import { SandboxesHub } from './components/SandboxesHub';
 import { SystemConsole } from './components/SystemConsole';
+import { WorkspaceHub } from './components/WorkspaceHub';
 import { ChatMessage, ExpressionArchetype, FacialMorphTargets, MicroexpressionAnalysis, PresetScenario } from './types/microexpressions';
 import { DEFAULT_MORPH_TARGETS, analyzeTextHeuristically } from './utils/microexpressionsEngine';
 import { audioEngine } from './utils/audioEngine';
 import { cognitiveEngine } from './utils/cognitiveEngine';
 import { generateGeminiResponse } from './utils/geminiService';
-import { Video, Globe, Activity, Eye, Sparkles, Brain, Package, Server } from 'lucide-react';
+import { Video, Globe, Activity, Eye, Sparkles, Brain, Package, Server, Layers } from 'lucide-react';
 
 const DEFAULT_WELCOME_MSG: ChatMessage = {
   id: 'msg-welcome',
@@ -69,7 +70,7 @@ export const App: React.FC = () => {
   const [selectedMessageId, setSelectedMessageId] = useState<string | undefined>(undefined);
 
   // Navigation Studio Mode Tab
-  const [activeStudioView, setActiveStudioView] = useState<'chat' | 'apis' | 'inspector' | 'cognitive' | 'sandboxes' | 'infrastructure'>('chat');
+  const [activeStudioView, setActiveStudioView] = useState<'chat' | 'apis' | 'inspector' | 'cognitive' | 'sandboxes' | 'infrastructure' | 'workspace'>('chat');
   const [webcamGaze, setWebcamGaze] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const visemeIntervalRef = useRef<number | null>(null);
@@ -395,6 +396,17 @@ export const App: React.FC = () => {
               <Server className="w-4 h-4 text-emerald-400" />
               <span>Infrastructure</span>
             </button>
+            <button
+              onClick={() => setActiveStudioView('workspace')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
+                activeStudioView === 'workspace'
+                  ? 'bg-indigo-600 text-white shadow font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-amber-400" />
+              <span>Google Workspace (Slides & Meet)</span>
+            </button>
           </div>
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
@@ -504,6 +516,12 @@ export const App: React.FC = () => {
           {activeStudioView === 'infrastructure' && (
             <div className="h-[620px]">
               <SystemConsole />
+            </div>
+          )}
+
+          {activeStudioView === 'workspace' && (
+            <div className="h-[620px]">
+              <WorkspaceHub />
             </div>
           )}
         </div>

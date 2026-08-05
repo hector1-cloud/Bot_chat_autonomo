@@ -1,162 +1,190 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Terminal, Shield, Cpu, Activity, ChevronRight, XCircle } from 'lucide-react';
-
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  type: 'command' | 'stdout' | 'stderr' | 'system';
-  content: string;
-}
+import React, { useEffect, useRef, useState } from 'react';
+import { Terminal as TerminalIcon, Shield, Cpu, Radio, Send } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 
 export const BashConsole: React.FC = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([
-    {
-      id: '1',
-      timestamp: new Date().toISOString(),
-      type: 'system',
-      content: 'HECTRON-OMEGA Security Shell v1.0.0 (Restricted Environment)'
-    },
-    {
-      id: '2',
-      timestamp: new Date().toISOString(),
-      type: 'system',
-      content: 'System ready. Type "help" to see allowed commands.'
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<'connecting' | 'connected' | 'fallback'>('connecting');
+  const [inputVal, setInputVal] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const termInstanceRef = useRef<Terminal | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs]);
+    if (!terminalRef.current) return;
 
-  const appendLog = (type: LogEntry['type'], content: string) => {
-    if (!content.trim() && type !== 'command') return;
-    setLogs(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString(),
-      type,
-      content
-    }]);
-  };
+    // Initialize xterm.js
+    const term = new Terminal({
+      cursorBlink: true,
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      fontSize: 13,
+      theme: {
+        background: '#090d16',
+        foreground: '#e2e8f0',
+        cursor: '#38bdf8',
+        selectionBackground: '#334155',
+        black: '#000000',
+        red: '#f87171',
+        green: '#4ade80',
+        yellow: '#facc15',
+        blue: '#60a5fa',
+        magenta: '#c084fc',
+        cyan: '#38bdf8',
+        white: '#f1f5f9',
+      },
+    });
 
-  const handleCommand = async (e: React.FormEvent) => {
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(terminalRef.current);
+    fitAddon.fit();
+    termInstanceRef.current = term;
+
+    term.writeln('\x1b[1;32mHECTRON-OMEGA Real-Time Terminal Pipeline v2.0\x1b[0m');
+    term.writeln('\x1b[38;5;244mConectando al servidor mediante WebSockets (Socket.IO)...\x1b[0m\r\n');
+
+    // Connect Socket.IO
+    const socket = io({
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      setStatus('connected');
+      term.writeln('\x1b[1;36m[System] Canal de WebSocket establecido con éxito.\x1b[0m\r\n');
+    });
+
+    socket.on('terminal-output', (data: string) => {
+      term.write(data);
+    });
+
+    socket.on('disconnect', () => {
+      setStatus('fallback');
+      term.writeln('\r\n\x1b[1;33m[Notice] WebSocket desconectado. Pasando a modo consola HTTP síncrono.\x1b[0m\r\n');
+    });
+
+    socket.on('connect_error', () => {
+      setStatus('fallback');
+    });
+
+    // Capture user keyboard input on xterm.js directly
+    term.onData((data) => {
+      if (socket.connected) {
+        socket.emit('terminal-input', data);
+      }
+    });
+
+    const handleResize = () => {
+      try {
+        fitAddon.fit();
+      } catch (e) {
+        // ignore fit error
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      socket.disconnect();
+      term.dispose();
+    };
+  }, []);
+
+  const handleFallbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cmd = inputValue.trim();
-    if (!cmd) return;
+    if (!inputVal.trim() || isExecuting) return;
 
-    setInputValue('');
-    appendLog('command', cmd);
-
-    if (cmd.toLowerCase() === 'clear') {
-      setLogs([]);
-      return;
-    }
-    
-    if (cmd.toLowerCase() === 'help') {
-      appendLog('stdout', 'Available commands:\n- ls [dir]\n- pwd\n- date\n- uptime\n- whoami\n- echo [text]\n- python [script.py]\n- node [script.js]\n- clear\n\n*This is a restricted execution environment. Unauthorized commands will be blocked and audited.*');
-      return;
-    }
-
+    const cmd = inputVal.trim();
+    setInputVal('');
     setIsExecuting(true);
+
+    if (termInstanceRef.current) {
+      termInstanceRef.current.writeln(`\r\n\x1b[1;32mroot@hectron-omega:~$\x1b[0m ${cmd}`);
+    }
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('terminal-input', cmd + '\n');
+      setIsExecuting(false);
+      return;
+    }
+
     try {
-      const response = await fetch('/api/console/execute', {
+      const res = await fetch('/api/console/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: cmd })
+        body: JSON.stringify({ command: cmd }),
       });
-
-      const data = await response.json();
-
-      if (response.status === 403) {
-        appendLog('stderr', data.error);
-        appendLog('system', '[AUDIT] Unauthorized command attempt logged.');
-      } else {
-        if (data.stdout) appendLog('stdout', data.stdout);
-        if (data.stderr) appendLog('stderr', data.stderr);
-        if (data.error && !data.stderr) appendLog('stderr', data.error);
-        if (data.exitCode !== 0) {
-          appendLog('system', `Process exited with code ${data.exitCode}`);
-        }
+      const data = await res.json();
+      if (termInstanceRef.current) {
+        if (data.stdout) termInstanceRef.current.write(data.stdout.replace(/\n/g, '\r\n'));
+        if (data.stderr) termInstanceRef.current.write(`\x1b[31m${data.stderr.replace(/\n/g, '\r\n')}\x1b[0m`);
+        if (data.error && !data.stderr) termInstanceRef.current.write(`\x1b[31m${data.error}\x1b[0m\r\n`);
       }
-    } catch (error: any) {
-      appendLog('stderr', `Connection Error: ${error.message}`);
+    } catch (err: any) {
+      if (termInstanceRef.current) {
+        termInstanceRef.current.writeln(`\x1b[31mError de conexión: ${err.message}\x1b[0m`);
+      }
     } finally {
       setIsExecuting(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0c0c0c] border border-slate-800 rounded-xl overflow-hidden font-mono text-sm relative shadow-2xl">
+    <div className="flex flex-col h-full min-h-[440px] bg-[#090d16] border border-slate-800 rounded-xl overflow-hidden font-mono text-xs shadow-2xl relative">
       {/* Console Header */}
-      <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <Terminal className="w-4 h-4 text-emerald-400" />
-          <span className="text-slate-300 font-bold text-xs uppercase tracking-wider">System Console</span>
-        </div>
-        <div className="flex items-center gap-3 text-xs">
-          <span className="flex items-center gap-1.5 text-emerald-400/80 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
-            <Shield className="w-3 h-3" /> Restricted Mode
-          </span>
-          <span className="flex items-center gap-1.5 text-slate-400">
-            <Cpu className="w-3 h-3" /> vCore: Active
-          </span>
-        </div>
-      </div>
-
-      {/* Logs Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-1 bg-black/50">
-        {logs.map((log) => (
-          <div key={log.id} className="whitespace-pre-wrap word-break">
-            {log.type === 'command' && (
-              <div className="flex items-start text-slate-300 mt-2">
-                <span className="text-emerald-500 font-bold mr-2">root@hectron-omega:~$</span>
-                <span>{log.content}</span>
-              </div>
-            )}
-            {log.type === 'stdout' && (
-              <div className="text-slate-400 pl-2">
-                {log.content}
-              </div>
-            )}
-            {log.type === 'stderr' && (
-              <div className="text-red-400 pl-2">
-                {log.content}
-              </div>
-            )}
-            {log.type === 'system' && (
-              <div className="text-blue-400/80 text-xs italic mt-1 mb-1">
-                -- {log.content} --
-              </div>
-            )}
-          </div>
-        ))}
-        {isExecuting && (
-          <div className="flex items-center gap-2 text-emerald-500/60 mt-2 pl-2 text-xs animate-pulse">
-            <Activity className="w-3 h-3" /> Executing...
-          </div>
-        )}
-      </div>
-
-      {/* Input Area */}
-      <form onSubmit={handleCommand} className="border-t border-slate-800 bg-slate-950 p-2 shrink-0">
+      <div className="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-emerald-500 font-bold whitespace-nowrap pl-2">root@hectron-omega:~$</span>
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            disabled={isExecuting}
-            className="flex-1 bg-transparent border-none outline-none text-slate-200 placeholder-slate-700 w-full"
-            placeholder={isExecuting ? "Executing..." : "Enter command..."}
-            autoFocus
-            autoComplete="off"
-            spellCheck="false"
-          />
+          <TerminalIcon className="w-4 h-4 text-emerald-400" />
+          <span className="text-slate-200 font-bold uppercase tracking-wider text-xs">
+            Terminal Unix / Node Real-Time Shell
+          </span>
+          <span className={`text-[10px] px-2 py-0.5 rounded font-bold border flex items-center gap-1 ${
+            status === 'connected' 
+              ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+              : 'bg-amber-950/80 text-amber-300 border-amber-800'
+          }`}>
+            <Radio className="w-3 h-3 animate-pulse" />
+            {status === 'connected' ? 'WebSocket (Pty/Bash Active)' : 'HTTP Shell Mode'}
+          </span>
         </div>
+
+        <div className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1 text-slate-400">
+            <Cpu className="w-3.5 h-3.5 text-indigo-400" /> Linux Container
+          </span>
+          <span className="flex items-center gap-1 text-slate-400">
+            <Shield className="w-3.5 h-3.5 text-emerald-400" /> Secure Sandbox
+          </span>
+        </div>
+      </div>
+
+      {/* xterm.js Terminal Container */}
+      <div className="flex-1 p-3 bg-[#090d16] overflow-hidden min-h-[340px]" ref={terminalRef} />
+
+      {/* Input Fallback Bar */}
+      <form onSubmit={handleFallbackSubmit} className="border-t border-slate-800 bg-slate-950 p-2.5 flex items-center gap-2 shrink-0">
+        <span className="text-emerald-400 font-bold whitespace-nowrap pl-1">root@hectron-omega:~$</span>
+        <input
+          type="text"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          disabled={isExecuting}
+          placeholder="Escribe comandos aquí (ej: ls, python3 -c 'print(42)', uname -a, date)..."
+          className="flex-1 bg-transparent border-none outline-none text-slate-200 placeholder-slate-600 text-xs"
+        />
+        <button
+          type="submit"
+          disabled={isExecuting || !inputVal.trim()}
+          className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-sans text-xs rounded-lg transition-colors flex items-center gap-1 font-semibold"
+        >
+          <Send className="w-3 h-3" />
+          <span>Enviar</span>
+        </button>
       </form>
     </div>
   );
