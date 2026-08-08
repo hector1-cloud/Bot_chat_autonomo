@@ -1,0 +1,56 @@
+{
+  "name": "HECTRON Bot Chat Autonomo",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+
+  "forwardPorts": [8000, 5432],
+  "portsAttributes": {
+    "8000": {
+      "label": "FastAPI / HECTRON API",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL pgvector",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": "pip install --upgrade pip && (test -f requirements.txt && pip install -r requirements.txt || true) && (test -f pyproject.toml && pip install -e . || true)",
+
+  "postStartCommand": "echo 'HECTRON devcontainer listo. Usa: docker compose up --build'",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker",
+        "tamasfe.even-better-toml",
+        "charliermarsh.ruff"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.typeCheckingMode": "basic",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff"
+      }
+    }
+  },
+
+  "remoteEnv": {
+    "DATABASE_URL": "postgresql+psycopg://postgres:postgres@localhost:5432/hectron",
+    "PYTHONUNBUFFERED": "1"
+  },
+
+  "remoteUser": "vscode"
+}
