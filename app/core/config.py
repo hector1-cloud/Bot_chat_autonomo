@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +18,19 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        """Normalize provider-issued URLs (e.g. Neon) for SQLAlchemy + psycopg2.
+
+        SQLAlchemy's psycopg2 dialect only accepts the ``postgresql://`` scheme,
+        while many providers hand out ``postgres://``. We rewrite the scheme so
+        the same DATABASE_URL works locally and on Vercel without extra config.
+        """
+        if isinstance(value, str) and value.startswith("postgres://"):
+            return "postgresql://" + value[len("postgres://") :]
+        return value
 
     @property
     def cors_origin_list(self) -> list[str]:
