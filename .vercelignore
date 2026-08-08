@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+__pycache__
+*.pyc
+venv
+.venv
+android-app
+hectron-avatar-bot
+.hectron
+.claude
+.devcontainer
+tests
