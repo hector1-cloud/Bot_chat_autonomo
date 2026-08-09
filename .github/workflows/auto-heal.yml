@@ -1,0 +1,45 @@
+name: Auto Heal Agent
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-and-heal:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Limpiar caché corrupto (si existe)
+        run: npm cache clean --force
+
+      - name: Instalar dependencias
+        run: npm ci --verbose
+
+      - name: Intentar Build
+        id: build_step
+        continue-on-error: true
+        run: npm run build
+
+      - name: Ejecutar Agente Auto-Heal (si falla el build)
+        if: steps.build_step.outcome == 'failure'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/auto-heal.js
+
+      - name: Verificar compilación final
+        if: steps.build_step.outcome == 'failure'
+        run: npm run build
