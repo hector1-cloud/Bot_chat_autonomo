@@ -1,0 +1,485 @@
+/* src/styles.css */
+:root {
+  color: #ffffff;
+  background: #020617;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #020617;
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  backdrop-filter: blur(18px);
+}
+
+.dashboard-shell {
+  width: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 50% -20%, rgba(0, 217, 255, 0.14), transparent 35%),
+    #020617;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-orb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, white, #00d9ff 25%, #0066ff 65%, transparent 70%);
+  box-shadow: 0 0 22px rgba(0, 217, 255, 0.7);
+}
+
+.brand strong {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+}
+
+.brand span {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  opacity: 0.45;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(16, 185, 129, 0.08);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.online {
+  background: #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.8);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 92px;
+}
+
+.tab {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.section-header h1 {
+  margin: 4px 0 0;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: #67e8f9;
+  opacity: 0.85;
+}
+
+.badge {
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.18);
+  color: #34d399;
+}
+
+.inline-note {
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.chat-window {
+  min-height: 54vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.message-row {
+  display: flex;
+}
+
+.message-row.user {
+  justify-content: flex-end;
+}
+
+.message-card {
+  max-width: 84%;
+  padding: 14px 16px;
+}
+
+.message-row.user .message-card {
+  background: rgba(0, 217, 255, 0.08);
+  border-color: rgba(0, 217, 255, 0.14);
+}
+
+.message-author {
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  opacity: 0.45;
+  margin-bottom: 6px;
+}
+
+.message-text {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.message-time {
+  margin-top: 6px;
+  font-size: 8px;
+  opacity: 0.35;
+}
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 18px;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+
+.chat-input button {
+  width: 52px;
+  border: 0;
+  border-radius: 18px;
+  color: white;
+  font-size: 24px;
+  background: linear-gradient(135deg, #00b8d9, #2563eb);
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  opacity: 0.55;
+}
+
+.live-indicator span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #777;
+}
+
+.live-indicator.live {
+  color: #ff365c;
+  opacity: 1;
+}
+
+.live-indicator.live span {
+  background: #ff365c;
+  box-shadow: 0 0 10px #ff365c;
+}
+
+.live-card {
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.live-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  background: radial-gradient(circle at 30% 30%, #fff, #00d9ff 22%, #2563eb 78%);
+  box-shadow: 0 0 24px rgba(0, 217, 255, 0.35);
+}
+
+.live-meta strong {
+  display: block;
+  font-size: 16px;
+}
+
+.live-meta span {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  opacity: 0.45;
+}
+
+.live-time {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.control-card,
+.scene-card,
+.analytics-card {
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.primary-action,
+.danger-action {
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 18px;
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary-action {
+  background: linear-gradient(135deg, #00b8d9, #2563eb);
+}
+
+.danger-action {
+  background: linear-gradient(135deg, #ef4444, #be123c);
+}
+
+.section-title {
+  margin-bottom: 12px;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  opacity: 0.5;
+}
+
+.scene-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scene {
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.scene.active {
+  color: #00d9ff;
+  border-color: rgba(0, 217, 255, 0.28);
+  background: rgba(0, 217, 255, 0.08);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.metric {
+  padding: 18px;
+}
+
+.metric span {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  opacity: 0.42;
+}
+
+.metric strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 26px;
+}
+
+.fake-chart {
+  height: 160px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.fake-chart div {
+  flex: 1;
+  min-width: 2px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(to top, #2563eb, #00d9ff);
+  opacity: 0.7;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 8px;
+  z-index: 20;
+}
+
+.nav-button {
+  flex: 1;
+  max-width: 140px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.nav-button span {
+  font-size: 20px;
+}
+
+.nav-button small {
+  font-size: 10px;
+}
+
+.nav-button.active {
+  color: #67e8f9;
+}
+
+.overlay-shell {
+  position: fixed;
+  inset: 0;
+  background: transparent !important;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.overlay-badge {
+  position: absolute;
+  left: 24px;
+  top: 24px;
+  z-index: 10;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: rgba(2, 6, 23, 0.55);
+}
+
+.overlay-orb {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #00d9ff 22%, #2563eb 72%, transparent 76%);
+  box-shadow: 0 0 60px rgba(0, 217, 255, 0.4);
+}
+
+.overlay-ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  box-shadow: 0 0 80px rgba(0, 217, 255, 0.12);
+}
+
+@media (min-width: 769px) {
+  .dashboard-shell {
+    padding-left: 100px;
+  }
+
+  .bottom-nav {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: auto;
+    width: 100px;
+    height: 100vh;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    border-radius: 0;
+  }
+
+  .nav-button {
+    max-width: none;
+    min-height: 68px;
+  }
+
+  .scene-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
