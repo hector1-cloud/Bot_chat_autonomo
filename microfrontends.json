@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "bot-chat-autonomo": {
+      "development": {
+        "local": 5173,
+        "fallback": "https://bot-chat-autonomo.vercel.app"
+      }
+    }
+  },
+  "options": {
+    "localProxyPort": 3024
+  }
+}
