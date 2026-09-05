@@ -9,6 +9,7 @@ import { CognitiveStudioPanel } from './components/CognitiveStudioPanel';
 import { SandboxesHub } from './components/SandboxesHub';
 import { SystemConsole } from './components/SystemConsole';
 import { WorkspaceHub } from './components/WorkspaceHub';
+import { PlanSelector } from './components/PlanSelector';
 import { ChatMessage, ExpressionArchetype, FacialMorphTargets, MicroexpressionAnalysis, PresetScenario } from './types/microexpressions';
 import { DEFAULT_MORPH_TARGETS, analyzeTextHeuristically } from './utils/microexpressionsEngine';
 import { audioEngine } from './utils/audioEngine';
@@ -321,9 +322,10 @@ export const App: React.FC = () => {
     
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header */}
-      <Header hasApiKey={hasApiKey} realtimeConnected={realtimeConnected} />
-
-      {/* Studio View Navigation Toolbar */}
+  <Header hasApiKey={hasApiKey} realtimeConnected={realtimeConnected} />
+  <PlanSelector />
+  
+  {/* Studio View Navigation Toolbar */}
       <div className="bg-slate-900 border-b border-slate-800/80 px-4 sm:px-6 py-2.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto">
           <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
