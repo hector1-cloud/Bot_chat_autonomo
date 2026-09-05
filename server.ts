@@ -9,10 +9,32 @@ import path from 'path';
 import fs from 'fs';
 import { analyzeTextHeuristically, DEFAULT_MORPH_TARGETS, getMuscleActivityFromMorphs } from './src/utils/microexpressionsEngine';
 import { ExpressionArchetype } from './src/types/microexpressions';
+import { isActiveSubscription, PRO_PLAN, requireStripe, stripe } from './src/lib/stripe';
+import Stripe from 'stripe';
 
 const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 const app = express();
+
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe no configurado' });
+  const signature = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret || typeof signature !== 'string') return res.status(400).json({ error: 'Firma Stripe requerida' });
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
+  } catch (error) {
+    return res.status(400).json({ error: `Webhook inválido: ${error instanceof Error ? error.message : 'firma incorrecta'}` });
+  }
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    console.info('[billing] Checkout completado', session.id, session.customer_email ?? session.customer_details?.email ?? 'sin email');
+  }
+  if (event.type === 'customer.subscription.deleted') console.info('[billing] Suscripción cancelada', (event.data.object as Stripe.Subscription).id);
+  res.json({ received: true });
+});
+
 app.use(express.json());
 
 const httpServer = createServer(app);
@@ -880,7 +902,40 @@ const ensureTelemetry = () => { fs.mkdirSync(path.dirname(telemetryFile), { recu
 const recordTelemetry = (event: Record<string, unknown>) => { if (process.env.TELEMETRY_ENABLED === 'false') return; try { ensureTelemetry(); const entries = JSON.parse(fs.readFileSync(telemetryFile, 'utf8')); entries.push({ ...event, timestamp: new Date().toISOString() }); fs.writeFileSync(telemetryFile, JSON.stringify(entries.slice(-500), null, 2)); } catch (error) { console.warn('[telemetry] No se pudo guardar el evento local:', error); } };
 const broadcastUniverse = (text?: string, kind = 'LIVE') => { universeState.orbit = (universeState.orbit + 0.013) % 360; universeState.activity = Math.max(1, Math.min(99, universeState.activity + Math.round((Math.random() - 0.48) * 8))); universeState.updatedAt = new Date().toISOString(); io.emit('universe-state', { state: universeState }); if (text) io.emit('universe-event', { text, kind }); };
 
-app.get('/health', (_req, res) => res.json({ ok: true, mode: 'local-free', telemetry: telemetryFile }));
+app.get('/health', (_req, res) => res.json({ ok: true, mode: 'free-and-pro', telemetry: telemetryFile, billing: Boolean(stripe) }));
+app.get('/api/billing/plans', (_req, res) => res.json({ free: { id: 'free', name: 'HECTRON Free', price: 0, features: ['Overlay y comandos básicos', 'Telemetría local', 'Memoria durante la sesión'] }, pro: { ...PRO_PLAN, price: PRO_PLAN.priceInCents / 100, features: ['Memoria persistente en Neon', 'Telemetría avanzada', 'Controles avanzados del universo'] } }));
+app.post('/api/billing/checkout', async (req, res) => {
+  try {
+    const client = requireStripe();
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : undefined;
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Email inválido' });
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : `https://${req.headers.host}`;
+    const session = await client.checkout.sessions.create({
+      mode: 'subscription',
+      ...(email ? { customer_email: email } : {}),
+      line_items: [{ price_data: { currency: PRO_PLAN.currency, product_data: { name: PRO_PLAN.name, description: PRO_PLAN.description }, unit_amount: PRO_PLAN.priceInCents, recurring: { interval: PRO_PLAN.interval } }, quantity: 1 }],
+      success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/?checkout=cancelled`,
+      metadata: { plan: PRO_PLAN.id },
+      integration_identifier: `hectron-pro-${Math.random().toString(36).slice(2, 10)}`,
+    });
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (error) {
+    res.status(503).json({ error: error instanceof Error ? error.message : 'No se pudo iniciar Checkout' });
+  }
+});
+app.get('/api/billing/status', async (req, res) => {
+  try {
+    const sessionId = typeof req.query.session_id === 'string' ? req.query.session_id : '';
+    if (!sessionId) return res.json({ plan: 'free', active: false });
+    const session = await requireStripe().checkout.sessions.retrieve(sessionId, { expand: ['subscription'] });
+    const subscription = session.subscription as Stripe.Subscription | null;
+    const active = isActiveSubscription(subscription?.status);
+    res.json({ plan: active ? 'pro' : 'free', active, status: subscription?.status ?? 'incomplete', customerEmail: session.customer_details?.email ?? session.customer_email ?? null });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Sesión inválida' });
+  }
+});
 app.get('/api/universe/state', (_req, res) => res.json(universeState));
 app.get('/api/telemetry', (_req, res) => { try { ensureTelemetry(); res.json(JSON.parse(fs.readFileSync(telemetryFile, 'utf8'))); } catch { res.json([]); } });
 app.post('/api/universe/command', (req, res) => { const { command, target = 'Núcleo Autónomo' } = req.body || {}; if (!command) return res.status(400).json({ error: 'Comando requerido' }); const action = String(command).replace(/^\//, '').trim(); const planet = String(target); universeState.planet = planet; universeState.entities += action === 'construir' ? 1 : 0; recordTelemetry({ type: 'universe-command', action, planet }); broadcastUniverse(`${action} · ${planet}`, 'CMD'); res.json({ ok: true, action, state: universeState }); });
