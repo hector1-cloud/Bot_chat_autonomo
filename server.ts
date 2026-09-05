@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import os from 'os';
 import { GoogleGenAI, Type } from '@google/genai';
 import path from 'path';
+import fs from 'fs';
 import { analyzeTextHeuristically, DEFAULT_MORPH_TARGETS, getMuscleActivityFromMorphs } from './src/utils/microexpressionsEngine';
 import { ExpressionArchetype } from './src/types/microexpressions';
 
@@ -873,6 +874,19 @@ app.post("/api/workspace/meet/create", async (req, res) => {
   res.json({ meeting });
 });
 
+const telemetryFile = process.env.TELEMETRY_FILE || path.join(process.cwd(), 'local-agent/data/telemetry.json');
+const universeState = { planet: 'Núcleo Autónomo', activity: 12, entities: 3, orbit: 0, updatedAt: new Date().toISOString() };
+const ensureTelemetry = () => { fs.mkdirSync(path.dirname(telemetryFile), { recursive: true }); if (!fs.existsSync(telemetryFile)) fs.writeFileSync(telemetryFile, '[]'); };
+const recordTelemetry = (event: Record<string, unknown>) => { if (process.env.TELEMETRY_ENABLED === 'false') return; try { ensureTelemetry(); const entries = JSON.parse(fs.readFileSync(telemetryFile, 'utf8')); entries.push({ ...event, timestamp: new Date().toISOString() }); fs.writeFileSync(telemetryFile, JSON.stringify(entries.slice(-500), null, 2)); } catch (error) { console.warn('[telemetry] No se pudo guardar el evento local:', error); } };
+const broadcastUniverse = (text?: string, kind = 'LIVE') => { universeState.orbit = (universeState.orbit + 0.013) % 360; universeState.activity = Math.max(1, Math.min(99, universeState.activity + Math.round((Math.random() - 0.48) * 8))); universeState.updatedAt = new Date().toISOString(); io.emit('universe-state', { state: universeState }); if (text) io.emit('universe-event', { text, kind }); };
+
+app.get('/health', (_req, res) => res.json({ ok: true, mode: 'local-free', telemetry: telemetryFile }));
+app.get('/api/universe/state', (_req, res) => res.json(universeState));
+app.get('/api/telemetry', (_req, res) => { try { ensureTelemetry(); res.json(JSON.parse(fs.readFileSync(telemetryFile, 'utf8'))); } catch { res.json([]); } });
+app.post('/api/universe/command', (req, res) => { const { command, target = 'Núcleo Autónomo' } = req.body || {}; if (!command) return res.status(400).json({ error: 'Comando requerido' }); const action = String(command).replace(/^\//, '').trim(); const planet = String(target); universeState.planet = planet; universeState.entities += action === 'construir' ? 1 : 0; recordTelemetry({ type: 'universe-command', action, planet }); broadcastUniverse(`${action} · ${planet}`, 'CMD'); res.json({ ok: true, action, state: universeState }); });
+setInterval(() => broadcastUniverse(), 2500);
+broadcastUniverse('universo local inicializado', 'SYS');
+
 // Setup Vite or Static File Serving
 async function startServer() {
   const PORT = 3000;
@@ -896,5 +910,6 @@ async function startServer() {
   });
 }
 
-startServer();
+  startServer();
+
 
