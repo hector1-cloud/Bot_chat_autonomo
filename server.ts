@@ -944,11 +944,15 @@ broadcastUniverse('universo local inicializado', 'SYS');
 
 // Setup Vite or Static File Serving
 async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        // Reuse Express's HTTP server so Vite does not open a second HMR port.
+        hmr: { server: httpServer },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
