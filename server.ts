@@ -78,7 +78,7 @@ io.on('connection', (socket) => {
 let genAI: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
   if (!genAI) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_2;
     if (apiKey) {
       genAI = new GoogleGenAI({
         apiKey: apiKey,
@@ -93,9 +93,10 @@ function getGenAI(): GoogleGenAI | null {
   return genAI;
 }
 
-// Fallback helper across multiple Gemini models in case of 429 rate limit/quota exhaustion
+// Real Gemini generation with a configurable primary model and safe fallback.
 async function generateContentWithFallback(ai: GoogleGenAI, contents: any, config?: any) {
-  const models = ['gemini-1.5-pro', 'gemini-1.5-flash'];
+  const primaryModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const models = Array.from(new Set([primaryModel, 'gemini-2.5-flash-lite']));
   let lastError: any = null;
 
   for (const model of models) {
@@ -136,6 +137,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     cloudSqlStatus: 'HEALTHY',
     geminiApiStatus: Boolean(process.env.GEMINI_API_KEY) ? 'ONLINE' : 'HEURISTIC_MODE',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     fastapiBridge: 'connected',
     hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
     timestamp: new Date().toISOString(),
@@ -944,11 +946,15 @@ broadcastUniverse('universo local inicializado', 'SYS');
 
 // Setup Vite or Static File Serving
 async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        // Reuse Express's HTTP server so Vite does not open a second HMR port.
+        hmr: { server: httpServer },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
